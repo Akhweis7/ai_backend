@@ -11,6 +11,9 @@ app.use(express.json());
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+
+
 console.log("SUPABASE URL:", process.env.SUPABASE_URL);
 console.log("SUPABASE KEY EXISTS:", !!process.env.SUPABASE_ANON_KEY);
 // endpoint
@@ -72,9 +75,16 @@ app.post("/documents", async (req, res) => {
       return res.status(400).json({ error: "Content is required" });
     }
 
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: content,
+    });
+
+    const embedding = embeddingResponse.data[0].embedding;
+
     const { data, error } = await supabase
       .from("documents")
-      .insert([{ content }])
+      .insert([{ content, embedding }])
       .select();
 
     if (error) {
@@ -134,6 +144,7 @@ app.post("/ask-with-context", async (req, res) => {
 
     const context = documents.map((doc) => doc.content).join("\n");
 
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -151,6 +162,94 @@ app.post("/ask-with-context", async (req, res) => {
     res.json({
       answer: response.choices[0].message.content,
       contextUsed: context,
+    });
+  } catch (error) {
+    console.error("Server error:", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+//////////////////////////search-with-context/////////////////////////////
+app.post("/search", async (req, res) => {
+  try {
+    const { question } = req.body;
+
+    
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: question,
+    });
+
+    const queryEmbedding = embeddingResponse.data[0].embedding;
+
+   
+    const { data, error } = await supabase.rpc("match_documents", {
+      query_embedding: queryEmbedding,
+      match_count: 1,
+    });
+
+    if (error) {
+      console.error("Search error:", error);
+      return res.status(500).json({ error: "Search failed" });
+    }
+
+    res.json({
+      bestMatch: data[0],
+    });
+  } catch (error) {
+    console.error("Server error:", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+//////////////////////////ask rag////////////////////////////////////////
+app.post("/ask-rag", async (req, res) => {
+  try {
+    const { question } = req.body;
+
+    if (!question) {
+      return res.status(400).json({ error: "Question is required" });
+    }
+
+ 
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: question,
+    });
+
+    const queryEmbedding = embeddingResponse.data[0].embedding;
+
+
+    const { data, error } = await supabase.rpc("match_documents", {
+      query_embedding: queryEmbedding,
+      match_count: 1,
+    });
+
+    if (error) {
+      console.error("Search error:", error);
+      return res.status(500).json({ error: "Search failed" });
+    }
+
+    const bestDoc = data[0]?.content || "";
+
+    // 3. send context + question to AI
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Answer using only the provided context. and be friendly and helpful",
+        },
+        {
+          role: "user",
+          content: `Context: ${bestDoc}\n\nQuestion: ${question}`,
+        },
+      ],
+    });
+
+    const answer = completion.choices[0].message.content;
+
+    res.json({
+      answer,
+      contextUsed: bestDoc,
     });
   } catch (error) {
     console.error("Server error:", error);
