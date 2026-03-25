@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI RAG Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="container">
+        <h1>AI Knowledge Assistant</h1>
+        <p class="subtitle">
+          Store documents, ask questions, and get AI answers based on your own data.
+        </p>
+      
+        <div class="card">
+          <h2>Add Document</h2>
+          <textarea id="documentInput" placeholder="Write a document to store in the database..."></textarea>
+          <button id="addDocumentButton">Add Document</button>
+          <p id="documentStatus">No document added yet.</p>
+        </div>
+      
+        <div class="card">
+          <h2>Ask a Question</h2>
+          <textarea id="questionInput" placeholder="Type your question here..."></textarea>
+          <button id="askButton">Ask</button>
+        </div>
+      
+        <div class="card">
+          <h2>Answer</h2>
+          <p id="answerOutput">Your answer will appear here...</p>
+        </div>
+      
+        <div class="card">
+          <h2>Context Used</h2>
+          <p id="contextOutput">The retrieved document will appear here...</p>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Stored Documents</h2>
+        <button id="loadDocumentsButton">Load Documents</button>
+        <div id="documentsList">No documents loaded yet.</div>
+      </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
